@@ -33,6 +33,7 @@ type Note struct {
 	Rel   string // vault-relative path, slash-separated
 	FM    FrontMatter
 	RawFM string // raw front-matter block text, fences excluded
+	FMErr error  // why RawFM did not parse as YAML; FM is then empty
 	Body  string
 	HasFM bool
 }
@@ -55,7 +56,7 @@ func parseNote(rel string, data []byte) *Note {
 				block := strings.Join(lines[1:i], "\n")
 				n.RawFM = block
 				n.HasFM = true
-				_ = yaml.Unmarshal([]byte(block), &n.FM)
+				n.FMErr = yaml.Unmarshal([]byte(block), &n.FM)
 				n.Body = strings.Join(lines[i+1:], "\n")
 				return n
 			}

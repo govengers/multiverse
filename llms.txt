@@ -86,6 +86,7 @@ multi write --title "<title>" --dir <dir> \
   --body "<md>"                     # or --stdin; warns when it looks like a near-duplicate
 multi write --pinned ...            # pin a critical fact into `multi wake-up`
 multi append "<note>" --content "<md>"   # or --stdin
+multi append "<note>" --summary "<line>" # update summary/freshness/retrieved (quoted for you)
 
 # transport & integrity (multi runs git for you)
 multi sync [-m "msg"]               # commit local → pull --rebase → push every brain in scope

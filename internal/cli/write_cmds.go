@@ -91,11 +91,14 @@ func writeCmd() *cli.Command {
 func appendCmd() *cli.Command {
 	return &cli.Command{
 		Name:      "append",
-		Usage:     "append content to a note's body (auto-committed)",
+		Usage:     "append content to a note's body and/or update its summary, freshness or retrieved (auto-committed)",
 		ArgsUsage: "<note>",
 		Flags: withBrain(
 			&cli.StringFlag{Name: "content", Aliases: []string{"c"}, Usage: "content to append"},
 			&cli.BoolFlag{Name: "stdin", Usage: "read content from standard input"},
+			&cli.StringFlag{Name: "summary", Usage: "replace the note's one-line summary"},
+			&cli.StringFlag{Name: "freshness", Usage: "replace the note's freshness"},
+			&cli.StringFlag{Name: "retrieved", Usage: "replace the note's retrieved date"},
 			&cli.BoolFlag{Name: "no-commit"},
 			&cli.StringFlag{Name: "message", Aliases: []string{"m"}},
 		),
@@ -116,8 +119,24 @@ func appendCmd() *cli.Command {
 				}
 				content = string(data)
 			}
-			if strings.TrimSpace(content) == "" {
-				return errors.New("nothing to append: pass --content or --stdin")
+			fields := map[string]string{}
+			for _, k := range brain.UpdatableFields {
+				if cmd.IsSet(k) {
+					fields[k] = cmd.String(k)
+				}
+			}
+			hasContent := strings.TrimSpace(content) != ""
+			if !hasContent && len(fields) == 0 {
+				return errors.New("nothing to do: pass --content, --stdin, --summary, --freshness or --retrieved")
+			}
+			if len(fields) > 0 {
+				if err := sb.UpdateFields(rel, fields); err != nil {
+					return err
+				}
+				fmt.Printf("updated front matter of %s:%s\n", sb.Name, rel)
+			}
+			if !hasContent {
+				return maybeCommit(sb, cmd, []string{rel}, "update: "+rel)
 			}
 			if err := sb.Append(rel, content); err != nil {
 				return err
