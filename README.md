@@ -340,7 +340,7 @@ network needed) when a new note looks like a near-duplicate of an existing one.
 instead of a loop of search / similar / read calls:
 
 ```bash
-multi explore "vue websocket" "reconnect strategy" "hub realtime" --bodies 5
+multi explore "vue websocket" "reconnect strategy" "hub realtime" --bodies 3
 ```
 
 Every query goes through `search` and, when a shadow index exists, `similar`.
@@ -353,8 +353,12 @@ as `search`.
 
 The output is plain text for the calling model: every hit as a `path | summary`
 line (seeds, then linked), followed by the full bodies of the `--bodies` best
-seeds (default 5, `0` for summaries only; MOC bodies are skipped because they
-are link lists, not knowledge). `--json` returns the same hits with `hop`,
+seeds (default 3, `0` for summaries only; MOC bodies are skipped because they
+are link lists, not knowledge). The text stays under `--max-bytes` (default
+24000, `0` = no cap), because agent harnesses move bigger tool output into a
+file the agent often never reads (Claude Code: 30 KB). The budget fills seed
+summaries, then bodies, then linked summaries; a body that only partly fits is
+cut at a line boundary, and a trailer counts what was cut. `--json` returns the same hits with `hop`,
 `score` and `body` fields; `--top` sets how many hits each list contributes
 per query (default 5).
 

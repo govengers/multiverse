@@ -137,7 +137,7 @@ and everything else works unchanged.
 ## Explore - one call per task
 
 ```bash
-multi explore "<q1>" "<q2>" "<q3>" [--bodies 5] [--hops 1] [--top 5] [--json]
+multi explore "<q1>" "<q2>" "<q3>" [--bodies 3] [--max-bytes 24000] [--hops 1] [--top 5] [--json]
 ```
 
 Run it once at the start of a task instead of a search/similar/read loop. Each
@@ -146,7 +146,8 @@ reciprocal rank into seeds, whose outgoing `[[wikilinks]]` are followed for
 `--hops`. MOCs and notes with more than 30 links are hubs: reached, listed,
 never expanded. Seeds rank above linked notes. Output: every hit as a
 `path | summary` line (seeds, then linked), then the bodies of the `--bodies`
-best seeds (MOC bodies skipped). Give 3-5 short queries naming the
+best seeds (MOC bodies skipped), all within `--max-bytes` (fills seeds, then
+bodies, then linked; a trailer counts what was cut). Give 3-5 short queries naming the
 technologies, projects and the verb of the task; more queries beat deeper hops
 (`--hops 2` returns a tenth of a big brain). Then `multi read` whatever else
 looks relevant. Works on `search` alone when no shadow index is configured.

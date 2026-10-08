@@ -189,13 +189,15 @@ func exploreCmd() *cli.Command {
 		Description: "Runs every query through `search` and `similar`, unions the top hits as seeds,\n" +
 			"follows their outgoing wikilinks for --hops (MOCs and other hubs are reached but\n" +
 			"never expanded), and prints the result ranked: every summary as a `path | summary`\n" +
-			"line, then the full body of the --bodies best notes. Give 3-5 short queries that\n" +
+			"line, then the full body of the --bodies best notes, all within --max-bytes (it fills\n" +
+			"seeds, then bodies, then linked, and counts what it cut). Give 3-5 short queries that\n" +
 			"name the technologies, projects and the verb of the task; more queries beat\n" +
 			"deeper hops. No model in the loop: the caller reads summaries, then bodies.",
 		Flags: withBrain(
 			&cli.IntFlag{Name: "top", Value: 5, Usage: "hits taken from each of search and similar per query"},
 			&cli.IntFlag{Name: "hops", Value: 1, Usage: "link-expansion depth from the seeds (2 already returns a tenth of a big brain)"},
-			&cli.IntFlag{Name: "bodies", Value: 5, Usage: "print the full body of this many top-ranked notes (0 = summaries only)"},
+			&cli.IntFlag{Name: "bodies", Value: 3, Usage: "print the full body of this many top-ranked notes (0 = summaries only)"},
+			&cli.IntFlag{Name: "max-bytes", Value: 24000, Usage: "cap the text output; fills seeds, then bodies, then linked (0 = no cap)"},
 			&cli.BoolFlag{Name: "json"},
 		),
 		Action: func(_ context.Context, cmd *cli.Command) error {
@@ -259,40 +261,125 @@ func exploreCmd() *cli.Command {
 					linked++
 				}
 			}
-			fmt.Printf("# explore: %s\n", strings.Join(queries, " | "))
-			fmt.Printf("# %d seeds, %d linked (%d hop), bodies of the top %d\n", seeds, linked, opt.Hops, bodies)
-			line := func(h brain.ExploreHit) {
+			header := fmt.Sprintf("# explore: %s\n# %d seeds, %d linked (%d hop), bodies of the top %d\n",
+				strings.Join(queries, " | "), seeds, linked, opt.Hops, bodies)
+			line := func(h brain.ExploreHit) string {
 				s := h.Summary
 				if s == "" {
 					s = "(no summary)"
 				}
 				if sc.multiSource() {
-					fmt.Printf("- %s:%s | %s\n", h.Brain, h.Path, s)
-				} else {
-					fmt.Printf("- %s | %s\n", h.Path, s)
+					return fmt.Sprintf("- %s:%s | %s\n", h.Brain, h.Path, s)
 				}
+				return fmt.Sprintf("- %s | %s\n", h.Path, s)
 			}
-			fmt.Println("\n## seeds")
+			var seedLines, linkedLines []string
 			for _, h := range hits {
 				if h.Hop == 0 {
-					line(h)
+					seedLines = append(seedLines, line(h))
+				} else {
+					linkedLines = append(linkedLines, line(h))
 				}
 			}
-			if linked > 0 {
-				fmt.Println("\n## linked")
-				for _, h := range hits {
-					if h.Hop > 0 {
-						line(h)
-					}
-				}
-			}
+			var bodyList []exploreBody
 			for _, i := range withBody {
-				fmt.Printf("\n## body: %s\n\n%s", hits[i].Path, hits[i].Body)
-				if !strings.HasSuffix(hits[i].Body, "\n") {
-					fmt.Println()
-				}
+				bodyList = append(bodyList, exploreBody{Path: hits[i].Path, Text: hits[i].Body})
 			}
+			fmt.Print(exploreText(header, seedLines, linkedLines, bodyList, int(cmd.Int("max-bytes"))))
 			return nil
 		},
 	}
+}
+
+// exploreBody is one note body explore prints after the summaries.
+type exploreBody struct{ Path, Text string }
+
+// exploreText renders explore's text output within maxBytes (0 = no cap). The
+// budget fills in order of value: seed summaries, then bodies, then linked
+// summaries; a body that only partly fits is cut at a line boundary. Agent
+// harnesses move oversized tool output into a file (Claude Code: 30 KB) that the
+// agent then often never reads, so one explore must fit one tool result.
+func exploreText(header string, seeds, linked []string, bodies []exploreBody, maxBytes int) string {
+	const seedHead, linkedHead, trailerRoom, minCut = "\n## seeds\n", "\n## linked\n", 200, 1024
+	left := maxBytes - len(header) - trailerRoom
+	if maxBytes <= 0 {
+		left = int(^uint(0) >> 1)
+	}
+	take := func(lines []string, head string) []string {
+		if len(lines) == 0 || len(head) >= left {
+			return nil
+		}
+		left -= len(head)
+		var out []string
+		for _, l := range lines {
+			if len(l) > left {
+				break
+			}
+			out = append(out, l)
+			left -= len(l)
+		}
+		return out
+	}
+
+	keptSeeds := take(seeds, seedHead)
+	var keptBodies []string
+	truncated := 0
+	for _, b := range bodies {
+		text := b.Text
+		if !strings.HasSuffix(text, "\n") {
+			text += "\n"
+		}
+		head := fmt.Sprintf("\n## body: %s\n\n", b.Path)
+		if len(head)+len(text) <= left {
+			keptBodies = append(keptBodies, head+text)
+			left -= len(head) + len(text)
+			continue
+		}
+		marker := fmt.Sprintf("… (truncated: multi read %s)\n", b.Path)
+		room := left - len(head) - len(marker)
+		if room < minCut {
+			break
+		}
+		cut := text[:room]
+		if i := strings.LastIndex(cut, "\n"); i > 0 {
+			cut = cut[:i+1]
+		}
+		keptBodies = append(keptBodies, head+cut+marker)
+		left -= len(head) + len(cut) + len(marker)
+		truncated++
+		break
+	}
+	keptLinked := take(linked, linkedHead)
+
+	var sb strings.Builder
+	sb.WriteString(header)
+	for _, part := range []struct {
+		head  string
+		lines []string
+	}{{seedHead, keptSeeds}, {linkedHead, keptLinked}} {
+		if len(part.lines) > 0 {
+			sb.WriteString(part.head)
+			sb.WriteString(strings.Join(part.lines, ""))
+		}
+	}
+	sb.WriteString(strings.Join(keptBodies, ""))
+
+	var cut []string
+	if n := len(seeds) - len(keptSeeds); n > 0 {
+		cut = append(cut, fmt.Sprintf("%d seeds", n))
+	}
+	if n := len(linked) - len(keptLinked); n > 0 {
+		cut = append(cut, fmt.Sprintf("%d linked", n))
+	}
+	if n := len(bodies) - len(keptBodies); n > 0 {
+		cut = append(cut, fmt.Sprintf("%d bodies", n))
+	}
+	if truncated > 0 {
+		cut = append(cut, "1 body truncated")
+	}
+	if len(cut) > 0 {
+		fmt.Fprintf(&sb, "\n# cut to stay under --max-bytes %d: %s (multi read <path>, or raise --max-bytes)\n",
+			maxBytes, strings.Join(cut, ", "))
+	}
+	return sb.String()
 }
