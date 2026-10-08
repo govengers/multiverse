@@ -117,6 +117,12 @@ func processJob(j Job, timeout time.Duration, verbose bool) bool {
 
 	report, ok := waitForReport(reportPath, timeout)
 	if !ok {
+		if PaneLoggedOut() {
+			logf("claude in %s is logged out; killed the session so the next job starts a fresh one: %s", SessionName, reportPath)
+			_ = KillSession()
+			notify("DeepThought ingester: claude was logged out, session restarted. If this repeats, run claude /login.")
+			return false
+		}
 		logf("timeout waiting for report: %s", reportPath)
 		return false
 	}
@@ -141,6 +147,9 @@ func waitForReport(path string, timeout time.Duration) (string, bool) {
 	for time.Now().Before(deadline) {
 		if data, err := os.ReadFile(path); err == nil && strings.Contains(string(data), "INGEST-STATUS:") {
 			return string(data), true
+		}
+		if PaneLoggedOut() {
+			return "", false
 		}
 		time.Sleep(5 * time.Second)
 	}

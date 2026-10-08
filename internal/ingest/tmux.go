@@ -50,6 +50,14 @@ func SessionAlive() bool {
 	return exec.Command("tmux", "has-session", "-t", SessionName).Run() == nil
 }
 
+// PaneLoggedOut reports whether the steered Claude answered with its logged-out
+// banner. A long-lived TUI can lose its OAuth session while a freshly started
+// claude still reads valid credentials, so the cure is a restart.
+func PaneLoggedOut() bool {
+	out, err := exec.Command("tmux", "capture-pane", "-t", SessionName, "-p").Output()
+	return err == nil && strings.Contains(string(out), "Please run /login")
+}
+
 // KillSession terminates the ingestion session.
 func KillSession() error {
 	return exec.Command("tmux", "kill-session", "-t", SessionName).Run()

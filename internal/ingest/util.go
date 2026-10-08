@@ -9,6 +9,7 @@ package ingest
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -33,6 +34,11 @@ func fileStamp() string { return time.Now().UTC().Format("2006-01-02T15-04-05Z")
 func isFileExec(p string) bool {
 	info, err := os.Stat(p)
 	return err == nil && !info.IsDir() && info.Mode()&0o111 != 0
+}
+
+// notify raises a macOS notification; a no-op where osascript is missing.
+func notify(msg string) {
+	_ = exec.Command("osascript", "-e", fmt.Sprintf("display notification %q with title %q", msg, "ingester")).Run()
 }
 
 // logf appends a line to the dispatcher log and echoes it to stderr.
