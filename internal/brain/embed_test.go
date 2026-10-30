@@ -186,3 +186,46 @@ func TestSimilarDemotesDeprecatedButSimilarNoteDoesNot(t *testing.T) {
 		t.Fatalf("SimilarNote must not demote deprecated neighbors, got %+v", neighbors)
 	}
 }
+
+func TestEmbeddingsLocalOverride(t *testing.T) {
+	own := &EmbedSettings{BaseURL: "http://localhost:11434/v1", Model: "qwen3-embedding:4b", QueryPrefix: "Instruct: q\nQuery: "}
+	b := &Brain{Settings: Settings{Embeddings: own}}
+	if b.Embeddings() != own {
+		t.Fatal("without an override the brain's own settings apply")
+	}
+	b.LocalEmbeddings = &EmbedSettings{BaseURL: "http://gpu:8090/v1"}
+	got := b.Embeddings()
+	if got.BaseURL != "http://gpu:8090/v1" || got.Model != own.Model || got.QueryPrefix != own.QueryPrefix {
+		t.Errorf("merged %+v: only the base URL should change", got)
+	}
+	if own.BaseURL != "http://localhost:11434/v1" {
+		t.Error("the brain's own settings were changed")
+	}
+	// A brain without embeddings gets them from this machine alone.
+	if got := (&Brain{LocalEmbeddings: &EmbedSettings{BaseURL: "u", Model: "m"}}).Embeddings(); got == nil || got.Model != "m" {
+		t.Errorf("local only: %+v", got)
+	}
+	if (&Brain{}).Embeddings() != nil {
+		t.Error("no embeddings anywhere should stay nil")
+	}
+}
+
+// The override is this machine's: saving the brain's settings must not write
+// it into the shared .multi/brain.yaml.
+func TestLocalEmbeddingsAreNotSaved(t *testing.T) {
+	b, err := Init(t.TempDir(), Settings{Name: "x", Embeddings: &EmbedSettings{BaseURL: "http://localhost:11434/v1", Model: "m"}}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b.LocalEmbeddings = &EmbedSettings{BaseURL: "http://gpu:8090/v1"}
+	if err := b.SaveSettings(); err != nil {
+		t.Fatal(err)
+	}
+	again, err := Open(b.Root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if again.Settings.Embeddings.BaseURL != "http://localhost:11434/v1" {
+		t.Errorf("brain.yaml now names %q", again.Settings.Embeddings.BaseURL)
+	}
+}

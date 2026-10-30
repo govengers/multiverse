@@ -56,6 +56,7 @@ func resolveScope(cmd *cli.Command) (*Scope, error) {
 		if err != nil {
 			return nil, err
 		}
+		b.LocalEmbeddings = cfg.LocalEmbeddings(cfg.FindPath(root))
 		sb := ScopedBrain{Brain: b, Name: b.DisplayName()}
 		return &Scope{Sources: []ScopedBrain{sb}, Targets: []ScopedBrain{sb}, Origin: root}, nil
 	}
@@ -107,6 +108,7 @@ func openRef(cfg *config.Config, ref string) (ScopedBrain, error) {
 		if err != nil {
 			return ScopedBrain{}, err
 		}
+		b.LocalEmbeddings = cfg.LocalEmbeddings(entry)
 		return ScopedBrain{Brain: b, Name: entry.Name, Aliases: entry.Aliases}, nil
 	}
 	if isDir(ref) {
@@ -114,6 +116,7 @@ func openRef(cfg *config.Config, ref string) (ScopedBrain, error) {
 		if err != nil {
 			return ScopedBrain{}, err
 		}
+		b.LocalEmbeddings = cfg.LocalEmbeddings(cfg.FindPath(ref))
 		return ScopedBrain{Brain: b, Name: b.DisplayName()}, nil
 	}
 	return ScopedBrain{}, fmt.Errorf("unknown brain %q (not registered, not a directory) — try `multi brain list` or `multi clone`", ref)

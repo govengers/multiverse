@@ -9,6 +9,8 @@ import (
 	"slices"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/mxcd/multiverse/internal/brain"
 )
 
 // Brain is a registry entry pointing at a brain repository on disk. Aliases
@@ -17,6 +19,10 @@ type Brain struct {
 	Name    string   `yaml:"name"`
 	Path    string   `yaml:"path"`
 	Aliases []string `yaml:"aliases,omitempty,flow"`
+	// Embeddings overrides fields of the brain's own embedding settings on
+	// this machine — another endpoint or model than the one the brain's
+	// shared .multi/brain.yaml names — without changing that file.
+	Embeddings *brain.EmbedSettings `yaml:"embeddings,omitempty"`
 }
 
 // Repo is a registry entry pointing at a repository checkout on this machine.
@@ -45,6 +51,9 @@ type Config struct {
 	Platforms map[string]string `yaml:"platforms,omitempty"`
 	// Repos maps a repository id to this machine's checkout.
 	Repos map[string]Repo `yaml:"repos,omitempty"`
+	// Embeddings overrides fields of every brain's embedding settings on this
+	// machine; a brain's own entry wins over it.
+	Embeddings *brain.EmbedSettings `yaml:"embeddings,omitempty"`
 
 	path string `yaml:"-"`
 }
@@ -133,4 +142,28 @@ func (c *Config) ActiveBrain() *Brain {
 		return nil
 	}
 	return c.Find(c.Active)
+}
+
+// LocalEmbeddings is what this machine overrides in a brain's embedding
+// settings: the registry-wide block, with the brain's own entry over it.
+// entry may be nil, for a brain opened by path that is not registered.
+func (c *Config) LocalEmbeddings(entry *Brain) *brain.EmbedSettings {
+	if entry == nil {
+		return c.Embeddings
+	}
+	return entry.Embeddings.Over(c.Embeddings)
+}
+
+// FindPath returns the registry entry for the brain at dir, if any.
+func (c *Config) FindPath(dir string) *Brain {
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		return nil
+	}
+	for i := range c.Brains {
+		if p, err := filepath.Abs(c.Brains[i].Path); err == nil && p == abs {
+			return &c.Brains[i]
+		}
+	}
+	return nil
 }

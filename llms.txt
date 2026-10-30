@@ -128,7 +128,10 @@ identity notes printed there in full.
 
 Per-brain `embeddings:` config in `.multi/brain.yaml` points at any
 OpenAI-compatible `/v1/embeddings` endpoint (local Ollama recommended:
-`model: qwen3-embedding:0.6b` with the qwen3 instruct `query_prefix`). The
+`model: qwen3-embedding:0.6b` with the qwen3 instruct `query_prefix`). An
+`embeddings:` block in `~/.config/multi/config.yaml` (top level for all brains,
+or under a brain's entry) replaces those fields on this machine only, without
+touching the shared `brain.yaml`. The
 index is a derived cache under `~/.cache/multi/` — never committed, rebuilt
 incrementally by `multi reindex`, queried by `multi similar`. Markdown remains
 the only source of truth. Without the config, both commands explain themselves

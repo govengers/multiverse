@@ -148,3 +148,34 @@ func TestActiveAliasLoadsAsName(t *testing.T) {
 		t.Fatalf("active alias should load as the brain name, got %q", c.Active)
 	}
 }
+
+func TestLocalEmbeddings(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("MULTI_CONFIG_DIR", dir)
+	os.WriteFile(filepath.Join(dir, "config.yaml"), []byte(`embeddings:
+    base_url: http://gpu:8090/v1
+brains:
+    - name: csi
+      path: /b/csi
+      embeddings:
+        model: qwen3-embedding-4b
+    - name: pdb
+      path: /b/pdb
+`), 0o644)
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := c.LocalEmbeddings(c.Find("csi")); got.BaseURL != "http://gpu:8090/v1" || got.Model != "qwen3-embedding-4b" {
+		t.Errorf("csi: %+v; the brain's entry goes over the registry-wide block", got)
+	}
+	if got := c.LocalEmbeddings(c.Find("pdb")); got.BaseURL != "http://gpu:8090/v1" || got.Model != "" {
+		t.Errorf("pdb: %+v; only the registry-wide block applies", got)
+	}
+	if got := c.LocalEmbeddings(nil); got != c.Embeddings {
+		t.Error("an unregistered brain gets the registry-wide block")
+	}
+	if c.FindPath("/b/csi") == nil || c.FindPath("/b/other") != nil {
+		t.Error("FindPath")
+	}
+}

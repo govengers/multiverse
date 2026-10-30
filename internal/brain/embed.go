@@ -37,6 +37,44 @@ type EmbedSettings struct {
 	BatchSize int `yaml:"batch_size,omitempty"`
 }
 
+// Embeddings is the brain's embedding settings as they apply on this
+// machine: the brain's own, with what LocalEmbeddings sets in their place.
+// Nil when neither configures any.
+func (b *Brain) Embeddings() *EmbedSettings {
+	return b.LocalEmbeddings.Over(b.Settings.Embeddings)
+}
+
+// Over returns base with every field e sets in its place; base itself when e
+// is nil, e alone when base is.
+func (e *EmbedSettings) Over(base *EmbedSettings) *EmbedSettings {
+	if e == nil {
+		return base
+	}
+	out := EmbedSettings{}
+	if base != nil {
+		out = *base
+	}
+	if e.BaseURL != "" {
+		out.BaseURL = e.BaseURL
+	}
+	if e.Model != "" {
+		out.Model = e.Model
+	}
+	if e.APIKeyEnv != "" {
+		out.APIKeyEnv = e.APIKeyEnv
+	}
+	if e.QueryPrefix != "" {
+		out.QueryPrefix = e.QueryPrefix
+	}
+	if e.DocPrefix != "" {
+		out.DocPrefix = e.DocPrefix
+	}
+	if e.BatchSize > 0 {
+		out.BatchSize = e.BatchSize
+	}
+	return &out
+}
+
 // ErrNoEmbeddings marks a brain without embeddings configured.
 var ErrNoEmbeddings = errors.New("embeddings are not configured for this brain (add an `embeddings:` block to .multi/brain.yaml)")
 
@@ -121,7 +159,7 @@ func embedText(n *Note) string {
 // batches, entries for deleted notes are dropped. force discards everything
 // first. progress, when non-nil, receives one line per batch.
 func (b *Brain) Reindex(force bool, progress func(string)) (ReindexStats, error) {
-	es := b.Settings.Embeddings
+	es := b.Embeddings()
 	if es == nil {
 		return ReindexStats{}, ErrNoEmbeddings
 	}
@@ -197,7 +235,7 @@ func (b *Brain) Similar(query string, topK int) ([]NoteInfo, error) {
 // similarAll runs Similar for several queries with a single embedding call:
 // one HTTP round trip is the whole cost of a query at vault scale.
 func (b *Brain) similarAll(queries []string, topK int) ([][]NoteInfo, error) {
-	es := b.Settings.Embeddings
+	es := b.Embeddings()
 	if es == nil {
 		return nil, ErrNoEmbeddings
 	}
@@ -222,7 +260,7 @@ func (b *Brain) similarAll(queries []string, topK int) ([][]NoteInfo, error) {
 // the primitive behind dedup and "related notes" during grooming. Scores stay
 // raw cosine: dedup must see deprecated near-duplicates at full strength.
 func (b *Brain) SimilarNote(rel string, topK int) ([]NoteInfo, error) {
-	if b.Settings.Embeddings == nil {
+	if b.Embeddings() == nil {
 		return nil, ErrNoEmbeddings
 	}
 	idx := b.loadEmbedIndex()
@@ -276,7 +314,7 @@ type EmbedIndexStatus struct {
 
 func (b *Brain) EmbedIndexStatus() (EmbedIndexStatus, error) {
 	var st EmbedIndexStatus
-	if b.Settings.Embeddings == nil {
+	if b.Embeddings() == nil {
 		return st, ErrNoEmbeddings
 	}
 	if p, err := b.embedIndexPath(); err == nil {
