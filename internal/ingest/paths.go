@@ -18,12 +18,12 @@ func Home() string {
 	return filepath.Join(home, ".claude", "ingester")
 }
 
-func stateDir() string       { return filepath.Join(Home(), "state") }          // per-session ledgers
-func queueDir() string       { return filepath.Join(Home(), "queue") }          // pending jobs
-func doneDir() string        { return filepath.Join(Home(), "queue", "done") }  // processed jobs
+func stateDir() string       { return filepath.Join(Home(), "state") }           // per-session ledgers
+func queueDir() string       { return filepath.Join(Home(), "queue") }           // pending jobs
+func doneDir() string        { return filepath.Join(Home(), "queue", "done") }   // processed jobs
 func failedDir() string      { return filepath.Join(Home(), "queue", "failed") } // dead-letter
-func reportsDir() string     { return filepath.Join(Home(), "reports") }        // sentinel reports
-func promptsDir() string     { return filepath.Join(Home(), "prompts") }        // per-job prompt files
+func reportsDir() string     { return filepath.Join(Home(), "reports") }         // sentinel reports
+func promptsDir() string     { return filepath.Join(Home(), "prompts") }         // per-job prompt files
 func runnerSettings() string { return filepath.Join(Home(), "runner-settings.json") }
 
 // lockPath is GLOBAL — deliberately NOT under Home(). It guards the single shared tmux
