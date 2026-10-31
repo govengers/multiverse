@@ -2,6 +2,7 @@ package ingest
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 )
@@ -117,6 +118,29 @@ func TestSanitize(t *testing.T) {
 	for in, want := range cases {
 		if got := sanitize(in); got != want {
 			t.Errorf("sanitize(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestHerdrEnvStripped(t *testing.T) {
+	got := withoutHerdr([]string{"HERDR_ENV=1", "PATH=/bin", "HERDR_PANE_ID=w1:p3", "MY_HERDR=keep"})
+	if len(got) != 2 || got[0] != "PATH=/bin" || got[1] != "MY_HERDR=keep" {
+		t.Errorf("withoutHerdr = %q", got)
+	}
+	// The launch prefix clears what an already-running tmux server hands down,
+	// and must not fail when there is nothing to clear.
+	for _, env := range [][]string{
+		{"PATH=/usr/bin:/bin", "HERDR_ENV=1", "HERDR_PANE_ID=w1:p3", "KEEP=1"},
+		{"PATH=/usr/bin:/bin", "KEEP=1"},
+	} {
+		cmd := exec.Command("sh", "-c", unsetHerdr+"env")
+		cmd.Env = env
+		out, err := cmd.Output()
+		if err != nil {
+			t.Fatalf("sh: %v", err)
+		}
+		if contains(string(out), "HERDR_") || !contains(string(out), "KEEP=1") {
+			t.Errorf("env after unsetHerdr:\n%s", out)
 		}
 	}
 }

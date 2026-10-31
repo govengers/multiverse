@@ -12,10 +12,17 @@ import (
 // SessionName is the dedicated tmux session that hosts the steered Claude agent.
 const SessionName = "multi-ingest"
 
+// unsetHerdr is the shell prefix that drops every HERDR_* variable before claude
+// starts. An already-running tmux server hands its global env (possibly started
+// from a herdr pane) to new sessions, which cmd.Env cannot reach.
+const unsetHerdr = `unset $(env | grep -o '^HERDR_[A-Za-z0-9_]*'); `
+
 // EnsureSession makes sure the dedicated tmux session is alive with an interactive
 // Claude (Sonnet, subscription quota) running in the target brain's dir. It is
-// recursion-guarded (MULTI_INGEST=1) and runs with hooks disabled so its own
-// Stop event cannot re-trigger ingestion. A dead session is recreated.
+// recursion-guarded (MULTI_INGEST=1) so its own Stop event cannot re-trigger
+// ingestion; the runner settings add no hooks but do not disable the global ones.
+// It never sees HERDR_* (the hook runs in a herdr pane), otherwise herdr's
+// SessionStart hook registers it as that pane's agent. A dead session is recreated.
 func EnsureSession() error {
 	if _, err := exec.LookPath("tmux"); err != nil {
 		return fmt.Errorf("tmux not found on PATH: %w", err)
@@ -30,7 +37,7 @@ func EnsureSession() error {
 	if err != nil {
 		return err
 	}
-	launch := fmt.Sprintf("exec %q --model sonnet --dangerously-skip-permissions --settings %q",
+	launch := unsetHerdr + fmt.Sprintf("exec %q --model sonnet --dangerously-skip-permissions --settings %q",
 		claudePath(), runnerSettings())
 	cmd := exec.Command("tmux", "new-session", "-d",
 		"-s", SessionName,
@@ -38,11 +45,23 @@ func EnsureSession() error {
 		"-c", brainDir,
 		"-e", "MULTI_INGEST=1",
 		"sh", "-c", launch)
+	cmd.Env = withoutHerdr(os.Environ()) // a tmux server started here must not inherit them
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("tmux new-session: %v: %s", err, out)
 	}
 	time.Sleep(6 * time.Second) // let the TUI boot before we steer it
 	return nil
+}
+
+// withoutHerdr returns env minus every HERDR_* entry.
+func withoutHerdr(env []string) []string {
+	var out []string
+	for _, kv := range env {
+		if !strings.HasPrefix(kv, "HERDR_") {
+			out = append(out, kv)
+		}
+	}
+	return out
 }
 
 // SessionAlive reports whether the ingestion session exists.

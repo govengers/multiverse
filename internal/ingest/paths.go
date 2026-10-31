@@ -42,9 +42,9 @@ func ensureDirs() error {
 	return nil
 }
 
-// writeRunnerSettings writes a hooks-disabled settings file for the steered Claude
-// session, so its own Stop event cannot re-trigger ingestion (belt-and-suspenders on
-// top of the MULTI_INGEST env guard).
+// writeRunnerSettings writes the settings file for the steered Claude session. Its
+// empty hooks map adds no hooks, but Claude merges it with the user settings, so the
+// global hooks still fire; the MULTI_INGEST env guard is what stops recursion.
 func writeRunnerSettings() error {
 	if err := ensureDirs(); err != nil {
 		return err
