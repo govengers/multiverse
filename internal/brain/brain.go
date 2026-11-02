@@ -70,6 +70,10 @@ func checkVocab(field, v string, allowed []string) error {
 type Brain struct {
 	Root     string
 	Settings Settings
+	// LocalEmbeddings overrides parts of Settings.Embeddings on this machine:
+	// from the user's registry, never saved to the brain. Read the settings
+	// through Embeddings.
+	LocalEmbeddings *EmbedSettings
 }
 
 const settingsRel = ".multi/brain.yaml"

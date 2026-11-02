@@ -168,3 +168,21 @@ func TestBrainAliasesResolveInScope(t *testing.T) {
 		t.Fatal("use must still reject an unknown ref")
 	}
 }
+
+func TestOpenRefAppliesLocalEmbeddings(t *testing.T) {
+	root := mkBrain(t, "alpha")
+	cfg := &config.Config{
+		Embeddings: &brain.EmbedSettings{Model: "local-model"},
+		Brains:     []config.Brain{{Name: "alpha", Path: root, Embeddings: &brain.EmbedSettings{BaseURL: "http://gpu:8090/v1"}}},
+	}
+	for _, ref := range []string{"alpha", root} { // by name, and by path
+		sb, err := openRef(cfg, ref)
+		if err != nil {
+			t.Fatal(err)
+		}
+		es := sb.Brain.Embeddings()
+		if es == nil || es.BaseURL != "http://gpu:8090/v1" || es.Model != "local-model" {
+			t.Errorf("%s: embeddings %+v", ref, es)
+		}
+	}
+}

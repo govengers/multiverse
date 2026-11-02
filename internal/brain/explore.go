@@ -51,7 +51,7 @@ func (b *Brain) Explore(queries []string, opt ExploreOptions) ([]ExploreHit, err
 		}
 		fuse(hits)
 	}
-	if b.Settings.Embeddings != nil {
+	if b.Embeddings() != nil {
 		lists, err := b.similarAll(queries, opt.Top)
 		if err != nil && !errors.Is(err, ErrNoIndex) {
 			return nil, err

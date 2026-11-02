@@ -330,6 +330,27 @@ multi similar "how do we handle websocket reconnects"
 multi similar --note "Some Pattern" # near-duplicate / related-note hunting
 ```
 
+**Another endpoint on your machine.** `brain.yaml` is shared through git, so
+everyone using the brain gets its endpoint. To embed somewhere else yourself —
+llama-server on a GPU box, another port — put an `embeddings:` block in your
+registry, `~/.config/multi/config.yaml`, at the top (all brains) or under a
+brain's entry (that brain; it wins). Its fields replace the brain's own on this
+machine only and are never written back to `brain.yaml`; fields it leaves out,
+such as `query_prefix`, keep the brain's values:
+
+```yaml
+embeddings:                                  # every brain on this machine
+  base_url: http://gpu-box:8090/v1           # llama-server --embedding
+brains:
+  - name: csi
+    path: /Users/me/brain/csi
+    embeddings:                              # this brain only
+      model: qwen3-embedding-4b
+```
+
+Vectors from different models do not mix: after changing the model, run
+`multi reindex`.
+
 Without an `embeddings:` block, `similar`/`reindex` simply say so and everything
 else works unchanged. `multi write` also warns lexically (token overlap, no
 network needed) when a new note looks like a near-duplicate of an existing one.
