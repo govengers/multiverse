@@ -122,7 +122,9 @@ A brain may close its `type`/`status` vocabularies (`taxonomy:` in
 `.multi/brain.yaml`) — then writes outside them are rejected with the allowed
 values in the error, and `multi lint` flags drift. `pinned: true` front matter
 surfaces a note in `multi wake-up`; the `wakeup:` settings list names the
-identity notes printed there in full.
+identity notes printed there in full. `filing_rules:` names a note whose body
+replaces the ingester's built-in filing rules (layout, note size, chronology,
+MOCs, dates) in its ingest and groom prompts.
 
 ## Semantic shadow index (optional)
 
