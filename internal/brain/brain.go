@@ -35,6 +35,10 @@ type Settings struct {
 	// Embeddings configures the optional semantic shadow index. Nil disables
 	// `multi reindex` and `multi similar` for this brain.
 	Embeddings *EmbedSettings `yaml:"embeddings,omitempty"`
+	// FilingRules names a note whose body the ingester and groomer give the
+	// agent as this brain's filing rules (layout, size, dates, MOCs), in place
+	// of their built-in ones. Empty keeps the built-in rules.
+	FilingRules string `yaml:"filing_rules,omitempty"`
 }
 
 // Taxonomy is the closed vocabulary for note front matter. A configured list
