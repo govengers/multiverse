@@ -58,6 +58,8 @@ func (b *Brain) Lint(opts LintOptions) (LintReport, error) {
 		if opts.Summary {
 			if !n.HasFM {
 				rep.add(rel, "summary", "no front matter")
+			} else if n.FMErr != nil {
+				rep.add(rel, "summary", fmt.Sprintf("front matter is not valid YAML (%v); quote values containing \": \"", n.FMErr))
 			} else if strings.TrimSpace(n.FM.Summary) == "" {
 				rep.add(rel, "summary", "missing summary")
 			}
