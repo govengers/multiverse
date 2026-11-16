@@ -41,9 +41,24 @@ holds the fact, wire lateral links, create a new note only when the fact is new.
   canonical front matter and refuses without a summary. NEVER hand-write a new-note file:
   the brain uses TOP-LEVEL type / status / tags / summary / source, NOT Claude's memory
   schema (name / description / metadata:). Always pass --source and --freshness.
-- Extend an existing note with @@multi --brain %[1]s append@@, or edit its file directly
-  to rewrite a section of the BODY (never the front matter, except @@status@@/@@updated@@
-  when deprecating), then let multi commit.
+- Extend an existing note with @@multi --brain %[1]s append@@, or edit its file directly,
+  then let multi commit. Body edits are unrestricted. In the front matter only the VALUES of
+  exactly three fields - @@summary@@, @@freshness@@, @@retrieved@@ - may change, and ONLY
+  through that pinned @@append@@ command's @@--summary@@ / @@--freshness@@ / @@--retrieved@@
+  flags (usable with or without @@--content@@). They quote the value; a hand-edited value
+  containing @@: @@ is invalid YAML and silently hides the whole note from search. The one
+  hand edit allowed is @@status@@/@@updated@@ when deprecating. Otherwise never edit the
+  front-matter block by hand: never add, remove or rename a KEY, never touch
+  @@type@@/@@tags@@/@@created@@, never restructure the block. The schema is fixed (see the
+  new-note rule above).
+- WHEN YOU EXTEND A NOTE, RE-READ ITS @@summary@@ AND UPDATE IT IF IT NO LONGER DESCRIBES THE
+  WHOLE NOTE. This is not optional housekeeping: @@summary@@ is the relevance gate - agents
+  read it to decide whether to open the note at all - so a summary still describing only the
+  original content makes everything you just added unfindable, and a summary still advertising a
+  claim your edit CORRECTED actively misleads the next reader. If your edit supersedes or
+  contradicts something already in the note, say so in @@freshness@@ too, and leave an
+  in-body pointer at the superseded section rather than silently leaving both readings standing.
+  Bump @@retrieved@@ when you added newly gathered facts (not for a pure backlink edit).
 
 ## How this brain is laid out (filing rules)
 %[5]s

@@ -126,7 +126,9 @@ or marked deprecated.
 - NEVER bypass @@multi@@ for git (no direct git, no other note app).
 - Create every new note with @@multi --brain %[1]s write --dir <domain>@@ (front matter is
   generated; pass --summary, --source, --freshness). Direct file edits: BODY only,
-  plus @@status@@/@@updated@@ in front matter when deprecating.
+  plus @@status@@/@@updated@@ in front matter when deprecating; change an existing
+  note's summary / freshness / retrieved only via @@append@@'s --summary / --freshness /
+  --retrieved flags, which quote the value.
 
 ## Layout rules you are maintaining
 %[6]s

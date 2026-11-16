@@ -105,6 +105,9 @@ func (b *Brain) Append(rel, content string) error {
 	if err != nil {
 		return err
 	}
+	if n := parseNote(rel, data); n.HasFM && n.FMErr != nil {
+		return fmt.Errorf("%s: front matter is not valid YAML (%v); rewrite the broken value with --summary, --freshness or --retrieved", rel, n.FMErr)
+	}
 	buf := string(data)
 	if !strings.HasSuffix(buf, "\n") {
 		buf += "\n"
@@ -114,6 +117,59 @@ func (b *Brain) Append(rel, content string) error {
 	}
 	buf += strings.TrimRight(content, "\n") + "\n"
 	return os.WriteFile(abs, []byte(buf), 0o644)
+}
+
+// UpdatableFields are the front-matter keys whose values may age after a note is
+// written; every other key is fixed at creation.
+var UpdatableFields = []string{"summary", "freshness", "retrieved"}
+
+// UpdateFields replaces the values of UpdatableFields in an existing note's front
+// matter, quoting them as needed, and leaves every other line of the block as it
+// is. A key the note lacks is added at the end of the block. It also repairs a
+// block that was invalid only because of one of these values.
+func (b *Brain) UpdateFields(rel string, values map[string]string) error {
+	abs := filepath.Join(b.Root, filepath.FromSlash(rel))
+	data, err := os.ReadFile(abs)
+	if err != nil {
+		return err
+	}
+	n := parseNote(rel, data)
+	if !n.HasFM {
+		return fmt.Errorf("%s: no front matter to update", rel)
+	}
+	lines := strings.Split(n.RawFM, "\n")
+	for _, k := range UpdatableFields {
+		v, ok := values[k]
+		if !ok {
+			continue
+		}
+		v = strings.TrimSpace(v)
+		if v == "" || strings.Contains(v, "\n") {
+			return fmt.Errorf("%s must be a single non-empty line", k)
+		}
+		lines = setField(lines, k, k+": "+yamlScalar(v))
+	}
+	block := strings.Join(lines, "\n")
+	if updated := parseNote(rel, []byte("---\n"+block+"\n---\n")); updated.FMErr != nil {
+		return fmt.Errorf("%s: front matter is still not valid YAML (%v)", rel, updated.FMErr)
+	}
+	return os.WriteFile(abs, []byte("---\n"+block+"\n---\n"+n.Body), 0o644)
+}
+
+// setField replaces the top-level line for key, together with any indented
+// continuation lines below it, or appends line when the key is absent.
+func setField(lines []string, key, line string) []string {
+	for i, l := range lines {
+		if !strings.HasPrefix(l, key+":") {
+			continue
+		}
+		end := i + 1
+		for end < len(lines) && (strings.HasPrefix(lines[end], " ") || strings.HasPrefix(lines[end], "\t")) {
+			end++
+		}
+		return append(append(append([]string{}, lines[:i]...), line), lines[end:]...)
+	}
+	return append(lines, line)
 }
 
 // notePath derives the note's vault-relative path and forces it to kebab-case so

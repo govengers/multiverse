@@ -227,6 +227,7 @@ multi write --title "Deployment Runbook" --dir projects \
   --body "..."                      # or --stdin
 multi write --pinned ...            # pin a critical fact into `multi wake-up`
 multi append "Deployment Runbook" --content "addendum"   # or --stdin
+multi append "Deployment Runbook" --summary "..."        # also --freshness / --retrieved
 
 # transport & integrity
 multi sync [-m "msg"]               # commit local → pull --rebase → push

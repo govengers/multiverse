@@ -59,6 +59,7 @@ CORE LOOP
                  --source "<where>" --freshness "<currency>" --body "<md>"
            multi write --pinned ...         pin a critical fact into wake-up
            multi append "<note>" --content "<md>"
+           multi append "<note>" --summary "<line>"   re-gate a grown note (also --freshness, --retrieved)
   graph    multi backlinks "<note>" · multi links "<note>" · multi orphans
   sync     multi sync                       commit + pull + push every brain in scope
   check    multi lint                       verify summary / split tag / freshness / kebab-case / taxonomy
@@ -129,7 +130,7 @@ Search/read the brain before answering; capture durable findings as notes. You n
 - Read:  ` + "`multi summary \"<note>\"`" + ` (the one-line gate) · ` + "`multi read \"<note>\"`" + ` (full body)
 - Write (auto-committed; ` + "`--summary`" + ` is REQUIRED, one line about contents):
   ` + "`multi write --title \"<t>\" --summary \"<one line>\" --tags <tag> --source \"<where>\" --freshness \"<currency>\" --body \"<md>\"`" + `
-- Append to a note: ` + "`multi append \"<note>\" --content \"<md>\"`" + `
+- Append to a note: ` + "`multi append \"<note>\" --content \"<md>\"`" + `; when the note outgrew its summary, add ` + "`--summary \"<line>\"`" + ` (also ` + "`--freshness`" + `, ` + "`--retrieved`" + `) - never hand-edit those values
 - Sync everything in scope: ` + "`multi sync`" + `
 - Resolve other repositories with ` + "`multi repo path <id|alias>`" + `; never guess a checkout path. If it is not
   registered, ask the user for the local checkout path and register it with ` + "`multi repo add <path>`" + `.
