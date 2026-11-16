@@ -32,13 +32,17 @@ func Groom(timeout time.Duration, verbose bool) error {
 	}
 	// lint exits non-zero on findings and orphans can be long - both outputs
 	// are input for the agent, not errors for us.
+	rules, err := FilingRules()
+	if err != nil {
+		return err
+	}
 	lint := multiOut("lint")
 	orphans := clipLines(multiOut("orphans"), 120)
 	oversized := clipLines(oversizedNotes(20*1024), 60)
 	stamp := fileStamp() + "_groom"
 	reportPath := filepath.Join(reportsDir(), stamp+".md")
 	promptPath := filepath.Join(promptsDir(), stamp+".md")
-	if err := os.WriteFile(promptPath, []byte(buildGroomPrompt(lint, orphans, oversized, reportPath)), 0o644); err != nil {
+	if err := os.WriteFile(promptPath, []byte(buildGroomPrompt(lint, orphans, oversized, reportPath, rules)), 0o644); err != nil {
 		return err
 	}
 	if err := EnsureSession(); err != nil {
@@ -101,7 +105,12 @@ func clipLines(s string, n int) string {
 
 // buildGroomPrompt assembles the maintenance instructions with the current
 // lint, orphan and size state baked in, so the agent starts from facts, not scans.
-func buildGroomPrompt(lint, orphans, oversized, reportPath string) string {
+// rules replaces the built-in layout summary when the brain names its own
+// filing rules (see FilingRules).
+func buildGroomPrompt(lint, orphans, oversized, reportPath, rules string) string {
+	if rules == "" {
+		rules = strings.ReplaceAll(defaultGroomRules, "@@", "`")
+	}
 	b := BrainName
 	return fmt.Sprintf(strings.ReplaceAll(`# Brain grooming job
 
@@ -120,11 +129,7 @@ or marked deprecated.
   plus @@status@@/@@updated@@ in front matter when deprecating.
 
 ## Layout rules you are maintaining
-Directory = domain, type = front matter, one fact per note, unique kebab-case
-basenames, bare-basename wikilinks, canonical notes under ~12 KB with chronology in
-journals/<basename>-log.md, tags from the existing vocabulary only, superseded notes
-@@status: deprecated@@ with a banner (never deleted), atlas/<domain>.md MOCs curated
-(load-bearing notes only, no session sections).
+%[6]s
 
 ## Phase 1 - lint findings: fix every one
 @@@@@@
@@ -180,5 +185,15 @@ The report MUST end with the status trailer:
     INGEST-STATUS: done
 
 Use @@multi --brain %[1]s sync@@ as your final step to push. Write the report LAST.
-`, "@@", "`"), b, lint, oversized, orphans, reportPath)
+`, "@@", "`"), b, lint, oversized, orphans, reportPath, strings.TrimSpace(rules))
 }
+
+// defaultGroomRules summarise the built-in filing rules (see defaultJobRules)
+// for a brain whose brain.yaml names no filing_rules note. @@ stands for a
+// backtick.
+const defaultGroomRules = `Directory = domain, type = front matter, one fact per note, unique kebab-case
+basenames, bare-basename wikilinks, canonical notes under ~12 KB with chronology in
+journals/<basename>-log.md, tags from the existing vocabulary only, superseded notes
+@@status: deprecated@@ with a banner (never deleted), atlas/<domain>.md MOCs curated
+(load-bearing notes only, no session sections).
+`

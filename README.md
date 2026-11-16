@@ -287,6 +287,18 @@ stop re-discovering the brain every session:
 wakeup: [working-with-me, collaboration-style]
 ```
 
+**Filing rules (optional).** The ingester's ingest and groom prompts carry
+built-in filing rules: where a note goes, how big it may grow, where chronology
+lives, how MOCs and dates look. A brain with a different layout names a note
+whose body replaces them, so the rules live in the brain next to the notes they
+govern and change by editing that note. Without the setting the built-in rules
+apply unchanged. A named note that is missing or empty fails the job instead of
+falling back to rules the brain does not use:
+
+```yaml
+filing_rules: filing-rules
+```
+
 **File names are kebab-case.** Every file and directory name is forced to
 lowercase-with-hyphens (`projects/deployment-runbook.md`) so brains stay portable
 across case-insensitive filesystems (Windows, macOS) and safe to type unquoted.

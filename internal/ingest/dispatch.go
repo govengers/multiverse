@@ -97,11 +97,17 @@ func processJob(j Job, timeout time.Duration, verbose bool) bool {
 		return true
 	}
 
+	rules, err := FilingRules()
+	if err != nil {
+		logf("filing rules: %v", err)
+		return false
+	}
+
 	ledger.Runs++
 	stamp := fileStamp() + "_" + sanitize(j.SessionID)
 	reportPath := filepath.Join(reportsDir(), stamp+".md")
 	promptPath := filepath.Join(promptsDir(), stamp+".md")
-	if err := os.WriteFile(promptPath, []byte(BuildJobPrompt(j, ledger, digest, reportPath)), 0o644); err != nil {
+	if err := os.WriteFile(promptPath, []byte(BuildJobPrompt(j, ledger, digest, reportPath, rules)), 0o644); err != nil {
 		logf("write prompt: %v", err)
 		return false
 	}

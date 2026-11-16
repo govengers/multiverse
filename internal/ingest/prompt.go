@@ -11,8 +11,12 @@ import (
 // journals/), the per-session continuity ledger (notes already touched this session,
 // so the agent extends rather than duplicates), and the new conversation delta to
 // integrate. The agent signals completion by writing the report file with an
-// INGEST-STATUS trailer.
-func BuildJobPrompt(j Job, l *Ledger, digest, reportPath string) string {
+// INGEST-STATUS trailer. rules replaces the built-in filing rules when the brain
+// names its own (see FilingRules).
+func BuildJobPrompt(j Job, l *Ledger, digest, reportPath, rules string) string {
+	if rules == "" {
+		rules = strings.ReplaceAll(defaultJobRules, "@@", "`")
+	}
 	var prior strings.Builder
 	if len(l.TouchedNotes) == 0 {
 		prior.WriteString("_(none yet - this is the first integration run for this session)_\n")
@@ -42,33 +46,7 @@ holds the fact, wire lateral links, create a new note only when the fact is new.
   when deprecating), then let multi commit.
 
 ## How this brain is laid out (filing rules)
-- **Directory = domain, type = front matter.** Top-level directories are domains
-  (e.g. hub/, infrastructure/, go/, frontend/, wilde-it/, deepthought/, claude-code/,
-  agents/, ...; run @@ls@@ in the brain root for the current list). A note about a
-  specific project's instance of a technology goes to the PROJECT dir; reusable
-  knowledge about the technology goes to the TECHNOLOGY dir. Never create a new
-  top-level directory; never file a content note in atlas/, journals/ or templates/.
-- **One fact per note**, kebab-case filename that names the fact, basename unique
-  brain-wide. Wikilinks are bare basenames (@@[[note-name]]@@), never paths.
-- **Canonical notes stay canonical.** A note describes the CURRENT state of its fact
-  and stays under ~12 KB. Never grow it by appending dated "Update dd.MM.yyyy" sections.
-  When a fact changed: rewrite the section that changed in place. When something
-  happened (a session, a release, a review round): that is chronology and goes to
-  @@journals/<note-basename>-log.md@@ (create it via @@multi write --dir journals --type journal@@
-  if missing, then @@append@@), linked from the note's Related section. When a genuinely
-  new distinct fact emerged: a new note in the same domain dir, linked both ways.
-- **Lateral wiring beats MOC wiring.** Every note you create must link at least two
-  related notes in its @@## Related@@ section and get a backlink from at least one of
-  them. Atlas MOCs (atlas/<domain>.md) are curated maps of load-bearing notes; add a
-  MOC line only for a project-context, architecture or decision note that a reader
-  would need to find by browsing. Never append session sections to a MOC.
-- **Tags are facets from the existing vocabulary** (project, technology, domain).
-  Reuse the tags of the neighbour notes @@explore@@ returns; never invent a tag. Keywords
-  belong in the summary, not in tags.
-- **Superseded knowledge is deprecated, never deleted.** When a new fact replaces an
-  old note: set the old note's @@status: deprecated@@, add a first-line banner
-  "> **Deprecated dd.MM.yyyy:** <why> - see [[new-note]]", keep the body.
-- German date format dd.MM.yyyy in bodies. Never the em-dash character (U+2014).
+%[5]s
 
 ## Already integrated THIS session - continue, don't duplicate
 %[2]s
@@ -126,5 +104,36 @@ Use @@multi --brain %[1]s sync@@ as your final step to push. Write the report LA
 ## Conversation delta to integrate
 
 %[4]s
-`, "@@", "`"), b, prior.String(), reportPath, digest)
+`, "@@", "`"), b, prior.String(), reportPath, digest, strings.TrimSpace(rules))
 }
+
+// defaultJobRules are the filing rules for a brain whose brain.yaml names no
+// filing_rules note. @@ stands for a backtick.
+const defaultJobRules = `- **Directory = domain, type = front matter.** Top-level directories are domains
+  (e.g. hub/, infrastructure/, go/, frontend/, wilde-it/, deepthought/, claude-code/,
+  agents/, ...; run @@ls@@ in the brain root for the current list). A note about a
+  specific project's instance of a technology goes to the PROJECT dir; reusable
+  knowledge about the technology goes to the TECHNOLOGY dir. Never create a new
+  top-level directory; never file a content note in atlas/, journals/ or templates/.
+- **One fact per note**, kebab-case filename that names the fact, basename unique
+  brain-wide. Wikilinks are bare basenames (@@[[note-name]]@@), never paths.
+- **Canonical notes stay canonical.** A note describes the CURRENT state of its fact
+  and stays under ~12 KB. Never grow it by appending dated "Update dd.MM.yyyy" sections.
+  When a fact changed: rewrite the section that changed in place. When something
+  happened (a session, a release, a review round): that is chronology and goes to
+  @@journals/<note-basename>-log.md@@ (create it via @@multi write --dir journals --type journal@@
+  if missing, then @@append@@), linked from the note's Related section. When a genuinely
+  new distinct fact emerged: a new note in the same domain dir, linked both ways.
+- **Lateral wiring beats MOC wiring.** Every note you create must link at least two
+  related notes in its @@## Related@@ section and get a backlink from at least one of
+  them. Atlas MOCs (atlas/<domain>.md) are curated maps of load-bearing notes; add a
+  MOC line only for a project-context, architecture or decision note that a reader
+  would need to find by browsing. Never append session sections to a MOC.
+- **Tags are facets from the existing vocabulary** (project, technology, domain).
+  Reuse the tags of the neighbour notes @@explore@@ returns; never invent a tag. Keywords
+  belong in the summary, not in tags.
+- **Superseded knowledge is deprecated, never deleted.** When a new fact replaces an
+  old note: set the old note's @@status: deprecated@@, add a first-line banner
+  "> **Deprecated dd.MM.yyyy:** <why> - see [[new-note]]", keep the body.
+- German date format dd.MM.yyyy in bodies. Never the em-dash character (U+2014).
+`
