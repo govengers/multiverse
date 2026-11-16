@@ -52,7 +52,7 @@ changelog:
 
 release:
   github:
-    owner: mxcd
+    owner: govengers
     name: multiverse
   draft: false
   prerelease: auto
