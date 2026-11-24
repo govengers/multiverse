@@ -21,7 +21,7 @@ brain navigable — above all, **every note has a one-line summary**.
 ## Install
 
 ```bash
-just install          # go install ./cmd/multi  →  $GOBIN/multi
+just install          # multi + ingester → $GOBIN, version from git describe
 # or
 just build            # → ./bin/multi
 ```
