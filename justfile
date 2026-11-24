@@ -8,8 +8,7 @@ build:
 
 # install both binaries into GOBIN / GOPATH/bin
 install:
-    go install ./cmd/multi
-    go install ./cmd/ingester
+    go install -ldflags "{{ldflags}}" ./cmd/multi ./cmd/ingester
 
 # run go vet and tests
 check:
